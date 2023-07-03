@@ -1,0 +1,875 @@
+//IMPLEMENTATION OF MULTILIST
+
+#include "stdafx.h"
+#pragma warning(disable : 4996)
+#include <stdio.h>
+#include <stdlib.h>
+#include<string.h>
+#include<process.h>
+
+struct course {
+	char courseid[6];
+	char coursename[80];
+	struct student  *studenthead;
+	struct course* cnext;
+
+};
+struct  student {
+	char studentid[15];
+	char studentname[120];
+	struct course * coursehead; // poiner to the first element of list of courses taken by the student
+	struct student * snext; // pointer to next student
+};
+
+struct course *chead = NULL;
+struct student *shead = NULL;
+
+// Student-Course mapping file name
+const char * gStudentCourseMappingTxt = "StdCrsInfo02.txt";
+//char * gStudentCourseMappingTxt = "Student_CourseInfo.txt";
+
+
+int insertcnode(struct course *c,struct course **pCourseHead)// requires node to be added and corresponding head as arguments
+{
+	if (*pCourseHead == NULL)
+	{   
+		*pCourseHead = c; //to change the value of the head itself that is being pointed to by pCourseHead
+		return 2;
+	}
+	else
+	{
+		struct course *temp;
+		temp = *pCourseHead;
+		while (temp ->cnext!= NULL) 
+			   temp = temp->cnext;
+		temp->cnext = c;
+		c->cnext = NULL;
+	}
+    return 1;
+}
+int insertsnode(struct student *s, struct student **pStudentHead)
+{
+	if (*pStudentHead == NULL)
+	{
+		*pStudentHead = s;
+		return 2;
+	}
+	else
+	{
+		struct student *temp;
+		temp = *pStudentHead;
+		while (temp->snext != NULL)
+			   temp = temp->snext;
+		temp->snext = s;
+		s->snext = NULL;
+	}
+	return 1;
+}
+
+/* Deletes the student node of a course node
+  Returns 1 upon successful finding and deleting.
+  Returns 0 if not able to find or delete
+*/
+int deleteSNodeOfCNode(struct course * pCourseToBeDeleted, char * pStudentName)
+{
+	int rtn = 0; // start with false.
+    struct course *t = chead;
+	while (t)
+	{
+		if (strcmpi(t->courseid, pCourseToBeDeleted->courseid) == 0)
+		{
+			struct student *tt = t->studenthead;
+			struct student *prev_tt = NULL;
+			while (tt)
+			{
+				if (strcmpi(tt->studentname, pStudentName) == 0)
+				{
+					if (tt == t->studenthead)
+					{
+						t->studenthead = tt->snext;
+						free(tt);
+						rtn = 1;	// we have successfully located the student node and deleted. return success
+					}
+					else
+					{
+						// use the previous element pointer in prev_tt
+						prev_tt->snext = tt->snext;
+						free(tt);
+						rtn = 1;	// we have successfully located the student node and deleted. return success
+					}
+					break;
+				}
+				prev_tt = tt;
+				tt = tt->snext;
+			}
+		}
+		t = t->cnext;
+	}
+	return rtn;
+}
+int deletecnode(struct course *c, struct course **pCourseHead, char *name)
+{
+	if (c==*pCourseHead)
+	{
+		// case of deleting the head 
+		struct course * temp = *pCourseHead;
+		*pCourseHead = (*pCourseHead)->cnext;
+		if (deleteSNodeOfCNode(temp, name))
+		{
+			// successfully deleted the Student note of Course node.
+			// Now delete the course node itself (Note: this is from the student list)
+			free(temp);
+		}
+	}
+	else
+	{
+		struct course *temp = *pCourseHead;
+		struct course *prev = NULL;
+		while ((strcmpi(temp->courseid,c->courseid) != 0))
+		{
+			prev = temp;
+			temp = temp->cnext;
+        }
+		prev->cnext = temp->cnext;
+		if (deleteSNodeOfCNode(temp, name))
+		{
+			// successfully deleted the Student note of Course node.
+			// Now delete the course node itself (Note: this is from the student list)
+			free(temp);
+		}
+    }
+	return 1;
+}
+int deleteCNodeofSNode(struct student *pStudenttobedeleted, char* pCourseid)
+{
+	int rtn = 0;
+	struct student *t = shead;
+	while (t)
+	{
+		if (strcmpi(t->studentname, pStudenttobedeleted->studentname) == 0)
+		{
+			struct  course *tt = t->coursehead;
+			struct course *prev_tt = NULL;
+			while (tt)
+			{
+				if (strcmpi(tt->courseid, pCourseid) == 0)
+				{
+					if (tt == t->coursehead)
+					{
+						t->coursehead = tt->cnext;
+						free(tt);
+						rtn = 1;
+					}
+					else
+					{
+						prev_tt->cnext = tt->cnext;
+						free(tt);
+						rtn = 1;
+					}
+					break;
+				}
+				prev_tt = tt;
+				tt = tt->cnext;
+			}
+		}
+		t = t->snext;
+	}
+	return rtn;
+}
+int deletesnode(struct student *s, struct student **pStudentHead, char *id)
+{
+	if (s== *pStudentHead)
+	{
+		struct student * temp = *pStudentHead;
+		*pStudentHead = (*pStudentHead)->snext;
+		if (deleteCNodeofSNode(temp, id))
+		{
+			free(temp);
+		}
+	}
+	else
+	{
+		struct student *temp;
+		struct student *prev = NULL;
+		temp = *pStudentHead;
+		while ((strcmpi(temp->studentname, s->studentname) != 0))
+		{
+			prev = temp;
+			temp = temp->snext;
+		}
+		prev->snext = temp->snext;
+		if (deleteCNodeofSNode(temp, id))
+		{
+			free(temp);
+		}
+	}
+	return 1;
+}
+void displaycourselist(struct course *c)
+{
+	printf("the Course list:\n");
+	struct course *temp;
+	temp = c;
+	while (temp != NULL)
+	{
+		printf("courseid=%s, ", temp->courseid);
+		printf("name=%s", temp->coursename);
+		temp = temp->cnext;
+	}
+}
+
+void displaystudentlist(struct student *s)
+{
+	printf("students:\n");
+	struct student *temp;
+	temp = s;
+	while (temp != NULL)
+	{
+		printf("\nstudent id=%s ", temp->studentid);
+		printf("name=%s", temp->studentname);
+		temp = temp->snext;
+	}
+
+}
+void displaycourselist02(struct course *c)
+{
+	printf("courses with students:\n");
+	struct course *temp;
+	temp = c;
+	while (temp != NULL)
+	{
+		printf("\ncourseid=%s", temp->courseid);
+		printf(" name=%s\t", temp->coursename);
+		if (temp->studenthead == NULL)
+		{
+			printf("<No student registered for this course yet...>\n");
+		}
+		else
+		{
+			printf("\t Students:");
+			struct student * temp1 = temp->studenthead;
+			while (temp1)
+			{
+				printf("%s,\t", temp1->studentname);
+				temp1 = temp1->snext;
+			}
+		}
+		temp = temp->cnext;
+	}
+
+}
+
+void displaystudentlist02(struct student *s)
+{
+	printf("students with courses:\n");
+	struct student *temp;
+	temp = s;
+	while (temp != NULL)
+	{
+		printf("\nstudentid=%s, name=%s\n", temp->studentid, temp->studentname);
+		struct course * temp1 = temp->coursehead;
+		if (temp->coursehead == NULL)
+		{
+			printf("<This student has not registered for any course yet...>\n");
+		}
+		else
+		{
+			printf("\t course ids:", temp->studentname);
+			while (temp1)
+			{
+				printf("%s,\t", temp1->courseid);
+				temp1 = temp1->cnext;
+			}
+		}
+		temp = temp->snext;
+	}
+
+}
+void read_course_file()
+{
+	FILE *fptr = (FILE *)NULL;
+	char fileline[200];
+	char csvdelim = ',';
+	char *posdelim;
+	//fptr = fopen("Courses-01.txt", "r");
+	//fptr = fopen("CoursesInfo-02.txt", "r");
+	fptr = fopen("CourseInfo-03.txt", "r");
+	if (fptr)
+	{
+		printf("file opened\n");
+		while (!feof(fptr))
+		{
+			memset(fileline, 0x00, 200);
+			if (fgets(fileline, 200, fptr) == NULL)
+			{
+				break;
+			}
+			printf("%s", fileline);
+			// Removing the newline at the end of the line. fgets reads together with the newline
+			// Dad says - Windows & Linux has some difference: CRLF vs LF 0x0D0A & just 0x0A
+			int linesize = strlen(fileline);
+			if (linesize > 0 && fileline[linesize - 1] == 0x0a)
+			{
+				fileline[linesize - 1] = '\0';
+				if (linesize > 1 && fileline[linesize - 2] == 0x0D)
+				{
+					fileline[linesize - 2] = '\0';
+				}
+			}
+
+			// checking for comma
+			posdelim = strchr(fileline, csvdelim);
+			if (posdelim == NULL)
+			{
+				printf("ill formatted line seen: [%s]\n", fileline);
+				continue;
+			}
+			struct course *newnode;
+			newnode = (struct course *)malloc(sizeof(struct course));
+			newnode->cnext = NULL;
+			int firstitemsize = posdelim - fileline;
+			strncpy(newnode->courseid, fileline, firstitemsize);
+			newnode->courseid[firstitemsize] = '\0'; /// null terminate
+			strcpy(newnode->coursename, posdelim + 1);
+			int x = strlen(newnode->courseid);
+			if (x > 0 && newnode->courseid[x - 1] == 0x0a)
+			{
+				newnode->courseid[x - 1] = '\0';
+			}
+			newnode->studenthead = NULL;
+			//displaycstructure(newnode);
+			insertcnode(newnode, &chead);
+
+		}
+		fclose(fptr);
+
+	}
+    else printf("file not opened");
+	displaycourselist(chead);
+}
+void read_student_file()
+{
+	//studentdata
+	FILE *fptr = (FILE *)NULL;
+	char fileline[200];
+	char csvdelim = ',';
+	char *posdelim;
+	//fptr = fopen("studentdata.txt", "r");
+	fptr = fopen("studentdata-02.txt", "r");
+	if (fptr)
+	{
+		printf("file opened\n");
+		while (!feof(fptr))
+		{
+			memset(fileline, 0x00, 200);
+			if (fgets(fileline, 200, fptr) == NULL)
+			{
+				break;
+			}
+			printf("%s", fileline);
+			// Removing the newline at the end of the line. fgets reads together with the newline
+			// Dad says - Windows & Linux has some difference: CRLF vs LF 0x0D0A & just 0x0A
+			int linesize = strlen(fileline);
+			if (linesize > 0 && fileline[linesize-1] == 0x0a)
+			{
+				fileline[linesize - 1] = '\0';
+				if (linesize > 1 && fileline[linesize-2] == 0x0D)
+				{
+					fileline[linesize-2] = '\0';
+				}
+			}
+
+			posdelim = strchr(fileline, csvdelim);
+			if (posdelim == NULL)
+			{
+				printf("ill formatted line seen: [%s]\n", fileline);
+				continue;
+			}
+			struct student *newnode;
+			newnode = (struct student *)malloc(sizeof(struct student));
+			newnode->snext = NULL;
+			int firstitemsize = posdelim - fileline;
+			strncpy(newnode->studentid, fileline, firstitemsize);
+			newnode->studentid[firstitemsize] = '\0'; /// null terminate
+			strcpy(newnode->studentname, posdelim + 1);
+			int x = strlen(newnode->studentname);
+			if (x > 0 && newnode->studentname[x - 1] == 0x0a)
+			{
+				newnode->studentname[x - 1] = '\0';
+			}
+			newnode->coursehead = NULL;
+			//displaysstructure(newnode);
+			insertsnode(newnode, &shead);
+
+		}
+
+		fclose(fptr);
+	}
+
+}
+/*
+This function extracts the student information from input file line.
+this fileline is supposed to have been read from a file
+And initialises a Student structure and adds it to the student linked list.
+*/
+int prepare_student_info(char * fileline)
+{
+	char csvdelim = ',';
+	char * posdelim;
+	posdelim = strchr(fileline, csvdelim);
+	int firstitemsize = 0;
+	if (posdelim == NULL)
+	{
+		return 0;    // comma is not found. Incorrectly formatted content. we will ignore
+	}
+	else
+	{
+		firstitemsize = posdelim - fileline;	// size of the contents before the comma, excluding the comma itself.
+	}
+	char temp_student_name[120], temp_course_id[6];
+	strncpy(temp_student_name, fileline, firstitemsize);
+	temp_student_name[firstitemsize] = '\0';
+	strncpy(temp_course_id, posdelim + 1, 5);
+	temp_course_id[5] = '\0';	/* brute-force null termination */
+	//printf("In prepare_stduent_info: %d: read student name:[%s], read course id:[%s]\n", __LINE__, temp_student_name, temp_course_id);
+	struct student * temp = NULL;
+	temp = shead;	// staring position of student list.
+	while (temp != NULL)
+	{
+		if (strcmp(temp->studentname,temp_student_name)==0)
+		{
+			struct course * newnode = (struct course *)malloc(sizeof(struct course));
+			strcpy(newnode->courseid, temp_course_id);
+			newnode->cnext = NULL;
+			insertcnode(newnode,&temp->coursehead);
+		}
+		temp = temp->snext;
+	}
+	return 1;
+}
+
+int trim_file_line(char * fileline)
+{
+	// Removing the newline at the end of the line. fgets reads together with the newline
+	// Dad says - Windows & Linux has some difference: CRLF vs LF 0x0D0A & just 0x0A
+	int linesize = strlen(fileline);
+	if (linesize > 0 && fileline[linesize - 1] == 0x0a)
+	{
+		fileline[linesize - 1] = '\0';
+		if (linesize > 1 && fileline[linesize - 2] == 0x0D)
+		{
+			fileline[linesize - 2] = '\0';
+		}
+	}
+	linesize = strlen(fileline);
+	if (linesize > 0 && fileline[0] == '#') return 0;
+
+	return 1;
+}
+void studentcoursefile()
+{
+	FILE *fptr = (FILE *)NULL;
+	char fileline[200];
+	// student and course data reading together:
+	fptr = fopen(gStudentCourseMappingTxt, "r");
+	if (fptr)
+	{
+		printf("file opened\n");
+		while(!feof(fptr))
+		{
+			memset(fileline, 0x00, 200);
+			fgets(fileline, 200, fptr);
+			printf("%s", fileline);
+			if( trim_file_line(fileline))
+				prepare_student_info(fileline);
+		}
+		fclose(fptr);
+    }
+	displaystudentlist02(shead);
+}
+int prepare_course_info(char * fileline)
+{
+	char csvdelim = ',';
+	char * posdelim;
+	posdelim = strchr(fileline, csvdelim);
+	int firstitemsize = 0;
+	if (posdelim == NULL)
+	{
+		return 0; // comma is not found. Incorrectly formatted content. we will ignore
+	}
+	else
+	{
+		firstitemsize = posdelim - fileline;// size of the contents before the comma, excluding the comma itself.
+	}
+	char temp_student_name[120], temp_course_id[6];
+	strncpy(temp_student_name, fileline, firstitemsize);
+	temp_student_name[firstitemsize] = '\0';
+	strncpy(temp_course_id, posdelim + 1, 5);
+	temp_course_id[5] = '\0';	/* brute-force null termination */
+	//strncpy(temp_course_id, posdelim + 1, 3);
+	//temp_course_id[3] = '\0';	/* brute-force null termination */
+	//printf("In prepare_stduent_info: %d: read student name:[%s], read course id:[%s]\n", __LINE__, temp_student_name, temp_course_id);
+	struct course * temp = NULL;
+	temp = chead;	// staring position of course list.
+	while (temp != NULL)
+	{
+		if (strcmp(temp->courseid,temp_course_id)== 0)
+		{
+			struct student * newnode = (struct student *)malloc(sizeof(struct student));
+			strcpy(newnode->studentname, temp_student_name);
+			newnode->snext = NULL;
+			insertsnode(newnode, &temp->studenthead);
+		}
+		temp = temp->cnext;
+
+	}
+	return 1;
+}
+void coursestudentfile()
+{
+	FILE *fptr = (FILE *)NULL;
+	char fileline[200];
+	// student and course data reading together:
+	fptr = fopen(gStudentCourseMappingTxt, "r");
+	if (fptr)
+	{
+		printf("file opened\n");
+		while (!feof(fptr))
+		{
+			memset(fileline, 0x00, 200);
+			fgets(fileline, 200, fptr);
+			printf("%s", fileline);
+			if (trim_file_line(fileline))
+				prepare_course_info(fileline);
+	
+		}
+		fclose(fptr);
+	}
+	displaycourselist02(chead);
+}
+int displayc()
+{
+	char name[256];
+	printf("\nEnter the Student name:");
+	scanf("%s", &name[0]);
+	struct student *temp;
+	temp = shead;
+	while (temp)
+	{
+		if (strcmpi(temp->studentname, name) == 0)
+		{
+			struct course *temp1;
+			temp1 = temp->coursehead;
+			if (temp1 == NULL)
+			{
+				printf("\n No courses for this student:[%s]\n", name);
+			}
+			while (temp1)
+			{
+				printf("%s\t", temp1->courseid);
+				temp1 = temp1->cnext;
+			}
+    	}
+		temp = temp->snext;
+	}
+	return 0;
+}
+int displays()
+{
+	char id[8];
+	printf("\nEnter the Course Id");
+	scanf("%s", &id);
+	struct course *temp;
+	temp = chead;
+	while (temp)
+	{
+		if (strcmpi(temp->courseid, id) == 0)
+		{
+			struct student *temp1;
+			temp1 = temp->studenthead;
+			if (temp1 == NULL)
+			{
+				printf("\n No students for this course:[%s]\n", id);
+			}
+			while (temp1)
+			{
+				printf("%s\t", temp1->studentname);
+				temp1 = temp1->snext;
+			}
+		}
+		temp = temp->cnext;
+	}
+	return 0;
+}
+
+int adds()
+{
+	char choice;
+	struct student *newnode= NULL;
+	newnode = (struct student *)malloc(sizeof(struct student));
+	printf("\nEnter the Student name:");
+	scanf("%s", newnode->studentname);
+	printf("\nEnter the Student id:");
+	scanf("%s", newnode->studentid);
+	newnode->snext = NULL;
+	newnode->coursehead = NULL;
+	insertsnode(newnode, &shead);
+	printf("Add courses for the student:");
+	do
+	{
+		struct course *nnode = NULL;
+		nnode = (struct course *)malloc(sizeof(struct course));
+		printf("\nEnter the course name:");
+		scanf("%s", &nnode->coursename);
+		printf("\nEnter the course id:");
+		scanf("%s", &nnode->courseid);
+		nnode->cnext = NULL;
+		insertcnode(nnode, &newnode->coursehead);
+		struct course * temp = chead;
+		while (temp)
+		{
+			if (strcmpi(temp->courseid, nnode->courseid) == 0)
+			{
+				struct student *stemp = shead;
+				while (stemp)
+				{
+					if (strcmpi(newnode->studentname, stemp->studentname) == 0)
+					{
+						insertsnode(stemp, &temp->studenthead);
+					}
+					stemp = stemp->snext;
+				}
+			}
+			temp = temp->cnext;
+		}
+		choice = ' ';
+		while ( !(choice == 'y' || choice == 'n' || choice == 'Y' || choice == 'N') )
+		{
+			fflush(stdin);
+			printf("Do you want to continue(y/n):");
+			scanf("%c", &choice);
+			if(choice == 0x0A)
+				scanf("%c", &choice);
+
+			if ( choice == 'y' || choice == 'n' || choice == 'Y' || choice == 'N') break;
+		}
+	} while (choice == 'y');
+	return 0;
+}
+int addc()
+{
+	char choice;
+	struct course *newnode = NULL;
+	newnode = (struct course *)malloc(sizeof(struct course));
+	printf("\nEnter the course name:");
+	scanf("%s", &newnode->coursename);
+	printf("\nEnter the course id:");
+	scanf("%s", &newnode->courseid);
+	newnode->cnext = NULL;
+	newnode->studenthead = NULL;
+	insertcnode(newnode, &chead);
+	do
+	{
+		printf("Add students for the course:");
+		struct student *nnode = NULL;
+		nnode = (struct student *)malloc(sizeof(struct student));
+		printf("\nEnter the Student name:");
+		scanf("%s", &nnode->studentname);
+		printf("\nEnter the student id:");
+		scanf("%s", &nnode->studentid);
+		nnode->snext = NULL;
+		insertsnode(nnode, &newnode->studenthead);
+		struct student * temp = shead;
+		while (temp)
+		{
+			if (strcmpi(temp->studentname,nnode->studentname) == 0)
+			{
+				struct course *ctemp = chead;
+				while (ctemp)
+				{
+					if (strcmpi(newnode->courseid, ctemp->courseid) == 0)
+					{
+						insertcnode(ctemp, &temp->coursehead);
+					}
+					ctemp = ctemp->cnext;
+				}
+			}
+			temp = temp->snext;
+		}
+		choice = ' ';
+		while (choice != 'y' || choice != 'n' || choice != 'N' || choice != 'N')
+		{
+			fflush(stdin);
+			printf("Do you want to continue(y/n):");
+			scanf("%c", &choice);
+			if (!(choice != 'y' || choice != 'n' || choice != 'N' || choice != 'N')) break;
+		}
+	} while (choice == 'y');
+	return 1;
+}
+int addc_s()
+{
+	char name[180];
+	printf("Enter the name of the student");
+	scanf("%s", &name);
+	struct student * temp;
+	temp = shead;
+	while (temp)
+	{
+		if (strcmpi(temp->studentname, name) == 0)
+		{
+			struct course *newnode = NULL;
+			newnode = (struct course *)malloc(sizeof(struct course));
+			printf("Enter courseid of course to be added\n");
+	    	scanf("%s", &newnode->courseid);
+			newnode->cnext = NULL;
+			insertcnode(newnode, &temp->coursehead);
+			struct course *ctemp = chead;
+			while (ctemp)
+			{
+				if (strcmpi(newnode->courseid, ctemp->courseid) == 0)
+				{
+					struct student *stemp = temp;
+					stemp->snext = NULL;
+					insertsnode(stemp, &ctemp->studenthead);
+				}
+				ctemp = ctemp->cnext;
+			}
+	    }
+		temp = temp->snext;
+	}
+	return 0;
+}
+int adds_c()
+{
+	char id[8];
+	printf("Enter the Courseid ");
+	scanf("%s", &id);
+	struct course * temp;
+	temp = chead;
+	while (temp)
+	{
+		if (strcmpi(temp->courseid, id) == 0)
+		{
+			struct student *newnode = NULL;
+			newnode = (struct student *)malloc(sizeof(struct student));
+			printf("Enter name of student to be added\n");
+			scanf("%s", &newnode->studentname);
+			newnode->snext = NULL;
+			insertsnode(newnode, &temp->studenthead);
+			struct student *stemp = shead;
+			while (shead)
+			{
+				if (strcmpi(newnode->studentname,stemp->studentname) == 0)
+				{
+					struct course *ctemp = temp;
+					ctemp->cnext = NULL;
+					insertcnode(ctemp, &stemp->coursehead);
+				}
+				stemp = stemp->snext;
+			}
+		}
+		temp = temp->cnext;
+	}
+	return 0;
+}
+int deletecourse()
+{
+	char name[120], id[10];
+	printf("Enter the student and the course you want deleted:");
+	scanf("%s%s", &name, &id);
+	struct student *temp = shead;
+	while (temp)
+	{
+		if (strcmpi(temp->studentname,name) == 0)
+		{
+			struct course *ctemp;
+			ctemp = temp->coursehead;
+			while (ctemp)
+			{
+				if (strcmpi(ctemp->courseid, id) == 0)
+				{
+					if (deletecnode(ctemp, &(temp->coursehead), name))
+					{
+						// we have successfully deleted the node and so no need to continue.
+						break;
+					}
+				}
+				ctemp = ctemp->cnext;
+			}
+        }
+		temp = temp->snext;
+	}
+	return 0;
+}
+int deletestudent()
+{
+	char name[120], id[10];
+	printf("Enter the course and the student you want deleted:");
+	scanf("%s%s", &id, &name);
+	struct course * temp = chead;
+	while (temp)
+	{
+		if (strcmpi(temp->courseid,id) == 0)
+		{
+			struct student *stemp;
+			stemp = temp->studenthead;
+			while (stemp)
+			{
+				if (strcmpi(stemp->studentname,name) == 0)
+				{
+					if (deletesnode(stemp, &(temp->studenthead), id))
+					{
+						// we have successfully deleted the node and so no need to continue.
+						break;
+					}
+				}
+				stemp = stemp->snext;
+			}
+		}
+		temp = temp->cnext;
+	}
+	return 0;
+}
+
+int menu()
+{
+	int choice;
+	do{
+		printf("\n1. Get all the courses of a student\n2.Get all the students of a course\n3.Add a Student\n4.Add a course");
+		printf("\n5.Add a course for a student\n6.Add a student for a course\n7.Delete a course for a student");
+		printf("\n8.Delete a student for a course\n9.Exit\nEnter a choice :");
+		scanf("%d", &choice);
+		switch (choice)
+		{
+		case 1: displayc();
+			break;
+		case 2: displays();
+			break;
+		case 3: adds();
+			break;
+		case 4: addc();
+			break;
+		case 5: addc_s();
+			break;
+		case 6: adds_c();
+			break;
+		case 7: deletecourse();
+			break;
+		case 8:deletestudent();
+			break;
+		case 9: exit(0);
+		default: printf("Enter valid choice between 1-9");
+		}
+	} while (choice < 10);
+	return 0;
+}
+int main()
+{
+	read_course_file();
+	read_student_file();
+	studentcoursefile();
+	coursestudentfile();
+	menu();
+	return 0;
+}
